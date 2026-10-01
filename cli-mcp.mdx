@@ -1,0 +1,223 @@
+---
+title: "CLI & MCP"
+description: "Drive Kite from your terminal with the kite CLI, or let any MCP-compatible agent call it directly"
+icon: "terminal"
+---
+
+Kite exposes every platform operation — projects, datasets, simulation, training, evaluation, deployment, digital twins — through two equivalent surfaces:
+
+- **The `kite` CLI**, for scripts, CI, and terminal workflows.
+- **The Kite MCP server**, for AI agents (Claude Code, Claude Desktop, Cursor, and other [MCP](https://modelcontextprotocol.io)-compatible clients) that drive your projects directly inside a conversation.
+
+Both surfaces map onto the same underlying operations, so anything you can script with the CLI, an agent can also call through MCP.
+
+<Warning>
+  This page's CLI command names and flags are a proposed reference derived from the Kite MCP server's tool catalog — the `kite-ml/kite` source wasn't reachable from this session to verify exact syntax against. The MCP tool names, parameters, and descriptions below are pulled directly from the live Kite MCP server and are accurate. Treat the CLI section as a spec to confirm, not shipped behavior, until it's checked against source.
+</Warning>
+
+## Install the CLI
+
+<Steps>
+<Step title="Install">
+  ```bash
+  npm install -g @kite-ml/cli
+  ```
+
+  <Note>Confirm the package name and install method against `kite-ml/kite` — this is a placeholder.</Note>
+</Step>
+
+<Step title="Authenticate">
+  ```bash
+  kite login
+  ```
+</Step>
+
+<Step title="Verify your setup">
+  ```bash
+  kite doctor
+  ```
+
+  Checks connectivity to the Kite API, validates your credentials, and prints your account info.
+</Step>
+</Steps>
+
+## Connect the MCP server
+
+<Steps>
+<Step title="Claude Code">
+  ```bash
+  claude mcp add kite -- npx -y @kite-ml/mcp-server
+  ```
+</Step>
+
+<Step title="Claude Desktop">
+  Add an entry to your MCP config file:
+
+  ```json
+  {
+    "mcpServers": {
+      "kite": {
+        "command": "npx",
+        "args": ["-y", "@kite-ml/mcp-server"]
+      }
+    }
+  }
+  ```
+</Step>
+
+<Step title="Cursor and other MCP clients">
+  Point your client at the same `npx -y @kite-ml/mcp-server` command, or your workspace's hosted MCP endpoint if you use one.
+</Step>
+
+<Step title="Verify your setup">
+  Ask your agent to call `kite_doctor`, or run `kite doctor` from the CLI — both check the same credentials.
+</Step>
+</Steps>
+
+## Reference
+
+Every operation below lists its proposed CLI form alongside its MCP tool name. IDs (`project_id`, `job_id`, `recording_id`, and so on) are UUIDs returned by a prior `list` or `create` call.
+
+### Projects
+
+| Description | CLI (proposed) | MCP tool |
+|---|---|---|
+| Create a project | `kite project create <name>` | `kite_project_create` |
+| List your projects | `kite project list` | `kite_project_list` |
+| Get a project's full details (file tree, assets, config, sensors, notebook cells) | `kite project get <project-id>` | `kite_project_get` |
+
+### Catalogs
+
+Reference data for choosing a robot, task, policy, and hardware tier.
+
+| Description | CLI (proposed) | MCP tool |
+|---|---|---|
+| List robot models (built-in and custom) | `kite robot list [--type arm\|humanoid\|quadruped] [--source builtin\|custom]` | `kite_robot_list` |
+| List task definitions | `kite task list [--category locomotion\|balance\|manipulation\|hybrid]` | `kite_task_list` |
+| List training policies (PPO, SAC, pi0, pi0-FAST, ACT, diffusion) | `kite policy list [--robot-type <type>]` | `kite_policy_list` |
+| Recommend a policy, training method, and hardware tier for a task | `kite policy recommend --robot-type <type> [--task-intent "<text>"] [--has-dataset] [--budget-usd <n>]` | `kite_policy_recommend` |
+| List hardware tiers and their token rates | `kite hardware list` | `kite_hardware_list` |
+| Estimate training time and token cost for a tier and step count | `kite hardware estimate --tier <tier> --steps <n> [--policy-id <id>]` | `kite_hardware_estimate` |
+| List built-in benchmark environments for evaluation | `kite eval catalog list` | `kite_eval_catalog_list` |
+
+### Datasets
+
+| Description | CLI (proposed) | MCP tool |
+|---|---|---|
+| Import a dataset from HuggingFace Hub or S3 | `kite dataset import <input> [--project-id <id>]` | `kite_dataset_import` |
+| Link a dataset to a project | `kite dataset link <dataset-id> --project <project-id> [--role train\|eval]` | `kite_dataset_link` |
+| List your datasets and the Kite seed catalog | `kite dataset list [--limit <n>]` | `kite_dataset_list` |
+| Validate a dataset for Vision-Language-Action training | `kite dataset validate-vla <dataset-id>` | `kite_dataset_validate_vla` |
+
+### Sensors
+
+| Description | CLI (proposed) | MCP tool |
+|---|---|---|
+| Auto-discover a robot's declared sensors | `kite sensor discover <robot-id>` | `kite_sensor_discover` |
+| Validate a sensor config and dry-run compile it | `kite sensor validate --config <path> [--robot-xml <path>] [--inventory-id <id>]` | `kite_sensor_validate` |
+| Start recording a session's sensor data | `kite sensor record start <session-id> [--cameras <name>...] [--fps <n>]` | `kite_sensor_record_start` |
+| Check a recording's state and frame count | `kite sensor record status <recording-id>` | `kite_sensor_record_status` |
+| Stop a recording and finalize its artifacts | `kite sensor record stop <recording-id>` | `kite_sensor_record_stop` |
+| List a recording's downloadable files | `kite sensor artifacts <recording-id>` | `kite_sensor_artifacts` |
+| Snapshot recent live sensor frames from a running session | `kite sensor telemetry <session-id> [--since <seq>] [--max <n>]` | `kite_sensor_telemetry` |
+
+### Worlds and objects
+
+| Description | CLI (proposed) | MCP tool |
+|---|---|---|
+| List a project's generated 3D worlds | `kite world list <project-id>` | `kite_world_list` |
+| Poll a world generation job | `kite world status <generation-id> [--project-id <id>]` | `kite_world_status` |
+| List objects available in the object library | `kite object list [--project-id <id>]` | `kite_object_list` |
+| Place an object into a project's simulation scene | `kite object place <project-id> <object-id> --position <x,y,z> --rotation <rx,ry,rz>` | `kite_object_place` |
+
+### Cloud training
+
+Fine-tune VLA policies or train RL policies on cloud GPU infrastructure.
+
+| Description | CLI (proposed) | MCP tool |
+|---|---|---|
+| Get what a policy and robot need to train (dataset specs, hardware minimums, cost) | `kite train requirements --policy-id <id> [--robot-type <type>] [--training-method finetune\|rl\|hybrid]` | `kite_train_requirements` |
+| Check a project's readiness against a policy's requirements | `kite train readiness <project-id> --policy-id <id> [--hardware-tier <tier>]` | `kite_train_readiness` |
+| Auto-generate a training config from project state and policy | `kite train configure <project-id> --policy-id <id> [--training-method <m>] [--hardware-tier <tier>] [--task-description "<text>"]` | `kite_train_configure` |
+| Run pre-launch validation checks | `kite train preflight <project-id> [--config <json>]` | `kite_train_preflight` |
+| Launch a training job | `kite train start <project-id> [--policy-id <id>] [--training-type RL\|VLA] [--hardware-tier <tier>] [--config <json>]` | `kite_train_start` |
+| Get a job's status, step count, and reward metrics | `kite train status <job-id>` | `kite_train_status` |
+| Tail a job's container logs | `kite train logs <job-id> [--tail <n>]` | `kite_train_logs` |
+| Stop a job (saves the current checkpoint) | `kite train stop <job-id>` | `kite_train_stop` |
+| List a completed job's checkpoints, metrics, and videos | `kite train artifacts <job-id>` | `kite_train_artifacts` |
+
+### Simulation training and playback
+
+RL training and live policy playback in the MJWarp/MuJoCo simulator — distinct from cloud training above.
+
+| Description | CLI (proposed) | MCP tool |
+|---|---|---|
+| Start a PPO run across N parallel simulated worlds | `kite sim train start [--inventory-id <id>] [--task <id>] [--project-id <id>] [--backend mjwarp\|mujoco] [--n-envs <n>] [--max-iterations <n>]` | `kite_sim_train_start` |
+| Poll an RL training session | `kite sim train status <session-id>` | `kite_sim_train_status` |
+| Stop an RL session (keeps its checkpoint) | `kite sim train stop <session-id>` | `kite_sim_train_stop` |
+| List saved policies from past sim training runs | `kite sim train list [--project-id <id>]` | `kite_sim_train_list` |
+| Drive a policy live in a single world (N=1) for a qualitative look | `kite sim play start [--inventory-id <id>] [--task <id>] [--policy-ref <ref>] [--rl-checkpoint <path> --rl-task <id>] [--backend mjwarp\|mujoco]` | `kite_sim_play_start` |
+| Poll a live playback session | `kite sim play status <session-id>` | `kite_sim_play_status` |
+| Stop a live playback session | `kite sim play stop <session-id>` | `kite_sim_play_stop` |
+
+### Evaluation
+
+| Description | CLI (proposed) | MCP tool |
+|---|---|---|
+| Evaluate a policy across N randomized MJWarp episodes (success rate + sensor data) | `kite sim eval start [--task <id> \| --scene-ref <ref> \| --scene-xml <path>] [--inventory-id <id>] [--policy-ref <ref>] [--n-episodes <n>]` | `kite_sim_eval_start` |
+| List your MJWarp sim-eval runs | `kite sim eval list` | `kite_sim_eval_list` |
+| Evaluate a policy in the cloud (legacy; prefer `sim eval start`) | `kite eval start [--project-id <id> \| --catalog-entry-id <id>] [--policy-source <path> \| --hf-repo-id <id> \| --training-job-id <id>] [--policy-kind rl\|vla]` | `kite_eval_start` |
+| Get an eval run's live status and summary | `kite eval status <eval-run-id>` | `kite_eval_status` |
+| List an eval run's per-episode outcomes, with video links | `kite eval results <eval-run-id>` | `kite_eval_results` |
+| Cancel a running evaluation | `kite eval stop <eval-run-id>` | `kite_eval_stop` |
+
+### Deployment
+
+Run a trained policy on physical hardware.
+
+| Description | CLI (proposed) | MCP tool |
+|---|---|---|
+| List USB serial ports likely to be a connected SO-Arm101 | `kite deploy arms` | `kite_deploy_arms` |
+| Start a policy on a connected SO-Arm101 | `kite deploy start --port <port> --task <task> [--robot-id <id>] [--hf-repo-id <id> \| --local-path <path> \| --training-job-id <id>] [--fps <n>]` | `kite_deploy_start` |
+| Snapshot the active deployment | `kite deploy status` | `kite_deploy_status` |
+| Stop the active deployment | `kite deploy stop` | `kite_deploy_stop` |
+
+### Digital twins
+
+Reconstruct an interactable MuJoCo scene from a HuggingFace LeRobot dataset episode.
+
+| Description | CLI (proposed) | MCP tool |
+|---|---|---|
+| Check a dataset resolves and has usable camera video, before building | `kite twin validate --dataset <repo-id> [--camera <substring>]` | `kite_twin_validate` |
+| Build a digital twin from a dataset episode | `kite twin create --dataset <repo-id> [--camera <substring>] [--task "<text>"] [--name "<text>"]` | `kite_twin_create` |
+| Poll a twin's build status and stage progress | `kite twin status <twin-id>` | `kite_twin_status` |
+| List your digital twins | `kite twin list [--limit <n>]` | `kite_twin_list` |
+| Resume a failed or canceled twin build | `kite twin resume <twin-id>` | `kite_twin_resume` |
+| Cancel a queued or in-progress twin build | `kite twin cancel <twin-id>` | `kite_twin_cancel` |
+
+### Dataset augmentation
+
+| Description | CLI (proposed) | MCP tool |
+|---|---|---|
+| Generate augmented episodes from a dataset by instruction | `kite augment create --repo-id <id> --instructions "<text>" [--episode-count <n>] [--output-type download\|huggingface]` | `kite_augment_create` |
+| List your augmentation runs | `kite augment list [--limit <n>]` | `kite_augment_list` |
+| Get an augmentation run's status and output files | `kite augment status <aug-id>` | `kite_augment_status` |
+| Cancel a running augmentation | `kite augment cancel <aug-id>` | `kite_augment_cancel` |
+
+### Agent and diagnostics
+
+| Description | CLI (proposed) | MCP tool |
+|---|---|---|
+| Send a natural language instruction to the Kite agent orchestrator | `kite agent ask "<prompt>" [--project-id <id>] [--conversation-id <id>]` | `kite_agent_ask` |
+| Check API connectivity, credentials, and account info | `kite doctor` | `kite_doctor` |
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get your first project running.
+  </Card>
+  <Card title="API reference" icon="code" href="/api-reference/introduction">
+    Call the same operations directly over HTTP.
+  </Card>
+</CardGroup>
