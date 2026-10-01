@@ -22,6 +22,12 @@
             ]
           },
           {
+            "group": "Kite tools",
+            "pages": [
+              "cli-mcp"
+            ]
+          },
+          {
             "group": "Customization",
             "pages": [
               "essentials/settings",
